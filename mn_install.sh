@@ -5,7 +5,7 @@
 
 
 declare -r SSH_INBOUND_PORT=22
-declare -r AUTODETECT_EXTERNAL_IP=`ifconfig | sed -En 's/127.0.0.1//;s/.*inet (addr:)?(([0-9]*\.){3}[0-9]*).*/\2/p'`
+declare -r AUTODETECT_EXTERNAL_IP=`ifconfig | sed -En 's/127.0.0.1//;s/.*inet (addr:)?(([0-9]*\.){3}[0-9]*).*/\2/p' | head -n 1`
 
 declare -r MN_SWAPSIZE=2000
 declare -r MN_USER="linc"
@@ -95,7 +95,7 @@ function update_system() {
     output "Updating system..."
     
     sudo apt-get -y update   &>> ${SCRIPT_LOGFILE}
-    sudo apt-get -y upgrade  &>> ${SCRIPT_LOGFILE}
+    # sudo apt-get -y upgrade  &>> ${SCRIPT_LOGFILE}
     sudo apt-get -y autoremove  &>> ${SCRIPT_LOGFILE}
 }
 
