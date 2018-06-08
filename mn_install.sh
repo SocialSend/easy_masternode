@@ -230,6 +230,16 @@ function create_config() {
         "addnode=104.156.225.78" > ${MN_CONF_FILE}
 }
 
+function unpack_bootstrap() {
+    output ""
+    output "Unpacking bootstrap"
+
+    sudo apt-get -y install wget unzip &>> ${SCRIPT_LOGFILE}
+    cd $MN_CONF_DIR &>> ${SCRIPT_LOGFILE}
+    wget https://linc.site/res/blockchain.tar.gz &>> ${SCRIPT_LOGFILE}
+    tar -xvf blockchain.tar.gz &>> ${SCRIPT_LOGFILE}
+}
+
 
 function launch_daemon() {
     output ""
@@ -259,5 +269,6 @@ configure_firewall
 compile
 create_mn_user
 create_config
+unpack_bootstrap
 launch_daemon
 finish
