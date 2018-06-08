@@ -35,7 +35,7 @@ function output() {
     printf "$(tput sgr0)"
 }
 
-function displayErr() {
+function displayError() {
     echo
     echo $1;
     echo
