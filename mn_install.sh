@@ -1,6 +1,6 @@
 #!/bin/bash
 ################################################################################
-### LINC MASTERNODE INSTALLATION SCRIPT v0.1
+### LINC MASTERNODE INSTALLATION SCRIPT v0.1.1
 ################################################################################
 
 
@@ -19,7 +19,7 @@ declare -r MN_RPCPASS=`cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head
 declare -r DATE_STAMP="$(date +%y-%m-%d-%s)"
 declare -r SCRIPTPATH=$( cd $(dirname ${BASH_SOURCE[0]}) > /dev/null; pwd -P )
 declare -r MASTERPATH="$(dirname "${SCRIPTPATH}")"
-declare -r SCRIPT_VERSION="v0.1"
+declare -r SCRIPT_VERSION="v0.1.1"
 declare -r SCRIPT_LOGFILE="/tmp/linc_mn_setup_${DATE_STAMP}.log"
 
 declare -r GIT_URL=https://github.com/LINCPlatform/LINC.git
@@ -59,11 +59,11 @@ function check_distro() {
     # currently only for Ubuntu 14.04 & 16.04 & 18.04
     if [[ -r /etc/os-release ]]; then
         . /etc/os-release
-        if [[ "${VERSION_ID}" != "14.04" ]] && [[ "${VERSION_ID}" != "16.04" ]] && [[ "${VERSION_ID}" != "18.04" ]] ; then
-            displayErr "This script only supports Ubuntu 14.04 & 16.04 & 18.04 LTS, exiting."
+        if [[ "${VERSION_ID}" != "14.04" ]] && [[ "${VERSION_ID}" != "16.04" ]] && [[ "${VERSION_ID}" != "17.10" ]] && [[ "${VERSION_ID}" != "18.04" ]] ; then
+            displayErr "This script only supports Ubuntu 14.04 & 16.04 & 17.10 & 18.04 LTS, exiting."
         fi
     else
-        displayErr "This script only supports Ubuntu 14.04 & 16.04 & 18.04 LTS, exiting."
+        displayErr "This script only supports Ubuntu 14.04 & 16.04 & 17.10 & 18.04 LTS, exiting."
     fi
 }
 
@@ -104,10 +104,11 @@ function install_packages() {
     output ""
     output "Installing required packages..."
 
+    sudo apt-get -y install wget unzip &>> ${SCRIPT_LOGFILE}
     sudo apt-get -y install software-properties-common build-essential protobuf-compiler libprotobuf-dev \
     libtool autotools-dev automake autoconf-archive pkg-config libssl-dev libcurl4-openssl-dev \
     libevent-dev bsdmainutils libboost-all-dev libminiupnpc-dev libzmq3-dev \
-    libgmp3-dev jp2a pv virtualenv git make apt-utils g++ libcurl3-dev libudev-dev &>> ${SCRIPT_LOGFILE}
+    libgmp3-dev git make apt-utils g++ libcurl3-dev libudev-dev &>> ${SCRIPT_LOGFILE}
     sudo add-apt-repository -y ppa:bitcoin/bitcoin  &>> ${SCRIPT_LOGFILE}
     sudo apt-get -y update  &>> ${SCRIPT_LOGFILE}
     sudo apt-get -y install libdb4.8-dev libdb4.8++-dev  &>> ${SCRIPT_LOGFILE}
@@ -142,10 +143,46 @@ function configure_firewall() {
     output "Configuring firewall rules"
     sudo ufw default deny                          &>> ${SCRIPT_LOGFILE}
     sudo ufw logging on                            &>> ${SCRIPT_LOGFILE}
-    usudo fw allow ${SSH_INBOUND_PORT}/tcp         &>> ${SCRIPT_LOGFILE}
+    sudo ufw allow ${SSH_INBOUND_PORT}/tcp         &>> ${SCRIPT_LOGFILE}
     sudo ufw allow ${MN_INBOUND_PORT}/tcp       &>> ${SCRIPT_LOGFILE}
     sudo ufw limit OpenSSH                         &>> ${SCRIPT_LOGFILE}
     sudo ufw --force enable                        &>> ${SCRIPT_LOGFILE}
+}
+
+# install
+function install_node() {
+    if [ ! -f ${MN_DAEMON} ]; then
+        cd ${SCRIPTPATH} &>> ${SCRIPT_LOGFILE}
+        wget https://linc.site/releases/LINC_latest_ubuntu.tar.gz -O LINC_latest_ubuntu.tar.gz &>> ${SCRIPT_LOGFILE}
+        if [ ! -f LINC_latest_ubuntu.tar.gz ]; then
+            output "Unable to download latest release. Trying to compile from source code..."
+            compile
+        else
+            tar -xvf LINC_latest_ubuntu.tar.gz &>> ${SCRIPT_LOGFILE}
+            if [ ! -d ${SCRIPTPATH}/${VERSION_ID} ]; then
+                output "No binaries for OS version ${VERSION_ID}. Trying to compile from source code..."
+                compile
+            else    
+                cd ${VERSION_ID} &>> ${SCRIPT_LOGFILE}
+                ./lincd -version &>> ${SCRIPT_LOGFILE}
+                if [ $? -ne 0 ]; then
+                    output "Compiled binaries launch failed. Trying to compile from source code..."
+                    compile
+                else
+                    cp * /usr/local/bin/ &>> ${SCRIPT_LOGFILE}
+                    # if it's not available after onstallation, theres something wrong
+                    if [ ! -f ${MN_DAEMON} ]; then
+                        output "Installation failed! Trying to complile from source code..."
+                        compile
+                    else
+                         output "Daemon installed successfully"
+                    fi
+                fi
+            fi
+        fi
+    else
+        output "Daemon already in place at ${MN_DAEMON}, not compiling"
+    fi
 }
 
 # compile
@@ -228,16 +265,17 @@ function create_config() {
         "addnode=173.199.118.148" \
         "addnode=8.9.4.195" \
         "addnode=104.156.225.78" > ${MN_CONF_FILE}
+    chown ${MN_USER}:${MN_USER} ${MN_CONF_FILE}
 }
 
 function unpack_bootstrap() {
     output ""
     output "Unpacking bootstrap"
 
-    sudo apt-get -y install wget unzip &>> ${SCRIPT_LOGFILE}
     cd $MN_CONF_DIR &>> ${SCRIPT_LOGFILE}
     wget https://linc.site/res/blockchain.tar.gz &>> ${SCRIPT_LOGFILE}
-    tar -xvf blockchain.tar.gz &>> ${SCRIPT_LOGFILE}
+    sudo -u ${MN_USER} -H tar -xvf blockchain.tar.gz &>> ${SCRIPT_LOGFILE}
+    rm -rf blockchain.tar.gz &>> ${SCRIPT_LOGFILE}
 }
 
 
@@ -266,7 +304,7 @@ update_system
 install_packages
 swaphack
 configure_firewall
-compile
+install_node
 create_mn_user
 create_config
 unpack_bootstrap
