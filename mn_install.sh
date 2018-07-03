@@ -60,10 +60,10 @@ function check_distro() {
     if [[ -r /etc/os-release ]]; then
         . /etc/os-release
         if [[ "${VERSION_ID}" != "14.04" ]] && [[ "${VERSION_ID}" != "16.04" ]] && [[ "${VERSION_ID}" != "17.10" ]] && [[ "${VERSION_ID}" != "18.04" ]] ; then
-            displayErr "This script only supports Ubuntu 14.04 & 16.04 & 17.10 & 18.04 LTS, exiting."
+            displayError "This script only supports Ubuntu 14.04 & 16.04 & 17.10 & 18.04 LTS, exiting."
         fi
     else
-        displayErr "This script only supports Ubuntu 14.04 & 16.04 & 17.10 & 18.04 LTS, exiting."
+        displayError "This script only supports Ubuntu 14.04 & 16.04 & 17.10 & 18.04 LTS, exiting."
     fi
 }
 
@@ -151,28 +151,28 @@ function configure_firewall() {
 
 # install
 function install_node() {
-    killall lincd &>> ${SCRIPT_LOGFILE}
-    rm -rf ${MN_CONF_DIR}/* &>> ${SCRIPT_LOGFILE}
+    sudo killall lincd &>> ${SCRIPT_LOGFILE}
+    sudo rm -rf ${MN_CONF_DIR}/* &>> ${SCRIPT_LOGFILE}
 
     if [ ! -f ${MN_DAEMON} ]; then
         cd ${SCRIPTPATH} &>> ${SCRIPT_LOGFILE}
-        wget https://linc.site/releases/LINC_latest_ubuntu.tar.gz -O LINC_latest_ubuntu.tar.gz &>> ${SCRIPT_LOGFILE}
-        if [ ! -f LINC_latest_ubuntu.tar.gz ]; then
+        wget https://linc.site/releases/LINC-1.0.0-linux64.tar.gz -O LINC-1.0.0-linux64.tar.gz &>> ${SCRIPT_LOGFILE}
+        if [ ! -f LINC-1.0.0-linux64.tar.gz ]; then
             output "Unable to download latest release. Trying to compile from source code..."
             compile
         else
-            tar -xvf LINC_latest_ubuntu.tar.gz &>> ${SCRIPT_LOGFILE}
-            if [ ! -d ${SCRIPTPATH}/${VERSION_ID} ]; then
-                output "No binaries for OS version ${VERSION_ID}. Trying to compile from source code..."
+            tar -xvf LINC-1.0.0-linux64.tar.gz &>> ${SCRIPT_LOGFILE}
+            if [ ! -f ${SCRIPTPATH}/linc-1.0.0/bin/lincd ]; then
+                output "Corrupted archive. Trying to compile from source code..."
                 compile
             else    
-                cd ${VERSION_ID} &>> ${SCRIPT_LOGFILE}
+                cd linc-1.0.0/bin &>> ${SCRIPT_LOGFILE}
                 ./lincd -version &>> ${SCRIPT_LOGFILE}
                 if [ $? -ne 0 ]; then
                     output "Compiled binaries launch failed. Trying to compile from source code..."
                     compile
                 else
-                    cp * /usr/local/bin/ &>> ${SCRIPT_LOGFILE}
+                    sudo cp * /usr/local/bin/ &>> ${SCRIPT_LOGFILE}
                     # if it's not available after onstallation, theres something wrong
                     if [ ! -f ${MN_DAEMON} ]; then
                         output "Installation failed! Trying to complile from source code..."
@@ -249,30 +249,36 @@ function create_config() {
     output ""
     output "Creating masternode config"
 
-    if [ ! -d "$MN_CONF_DIR" ]; then mkdir $MN_CONF_DIR; fi
+    if [ ! -d "$MN_CONF_DIR" ]; then sudo mkdir $MN_CONF_DIR; fi
     if [ $? -ne 0 ]; then displayError "Unable to create config directory!"; fi
     
     NODES_LIST=`wget "https://explorer.linc.site/nodes/?format=conf" -q -O -`
     if [[ ! "${NODES_LIST}" =~ ^addnode=[\d\.]+* ]]; then NODES_LIST=''; fi
 
-    printf "%s\n%s\n" \
-        "listen=1" \
-        "server=1" \
-        "daemon=1" \
-        "masternode=1" \
-        "masternodeprivkey=${MN_PKEY}" \
-        "bind=${EXTERNAL_IP}" "externalip=${EXTERNAL_IP}" \
-        "rpcbind=127.0.0.1" "rpcallowip=127.0.0.1" \
-        "rpcuser=${MN_RPCUSER}" "rpcpassword=${MN_RPCPASS}" \
-        "maxconnections=256" \
-        "addnode=45.77.182.60" \
-        "addnode=45.76.223.149" \
-        "addnode=45.77.132.180" \
-        "addnode=173.199.118.148" \
-        "addnode=8.9.4.195" \
-        "addnode=104.156.225.78" ${NODES_LIST} > ${MN_CONF_FILE}
+        sudo bash -c "cat > ${MN_CONF_FILE} <<-EOF
+listen=1
+server=1
+daemon=1
+masternode=1
+masternodeprivkey=${MN_PKEY}
+bind=${EXTERNAL_IP}
+externalip=${EXTERNAL_IP}
+rpcbind=127.0.0.1
+rpcconnect=127.0.0.1
+rpcallowip=127.0.0.1
+rpcuser=${MN_RPCUSER}
+rpcpassword=${MN_RPCPASS}
+maxconnections=256
+addnode=45.77.182.60
+addnode=45.76.223.149
+addnode=45.77.132.180
+addnode=173.199.118.148
+addnode=8.9.4.195
+addnode=104.156.225.78
+${NODES_LIST}
+EOF"
 
-    chown -R ${MN_USER}:${MN_USER} ${MN_CONF_DIR} &>> ${SCRIPT_LOGFILE}
+    sudo chown -R ${MN_USER}:${MN_USER} ${MN_CONF_DIR} &>> ${SCRIPT_LOGFILE}
 }
 
 function unpack_bootstrap() {
@@ -282,7 +288,7 @@ function unpack_bootstrap() {
     cd $MN_CONF_DIR &>> ${SCRIPT_LOGFILE}
     wget https://linc.site/res/blockchain.tar.gz &>> ${SCRIPT_LOGFILE}
     tar -xvf blockchain.tar.gz &>> ${SCRIPT_LOGFILE}
-    chown -R ${MN_USER}:${MN_USER} ${MN_CONF_DIR} &>> ${SCRIPT_LOGFILE}
+    sudo chown -R ${MN_USER}:${MN_USER} ${MN_CONF_DIR} &>> ${SCRIPT_LOGFILE}
     rm -rf blockchain.tar.gz &>> ${SCRIPT_LOGFILE}
 }
 
