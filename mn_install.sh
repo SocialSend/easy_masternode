@@ -1,6 +1,6 @@
 #!/bin/bash
 ################################################################################
-### LINC MASTERNODE INSTALLATION SCRIPT v0.1.1
+### LINC MASTERNODE INSTALLATION SCRIPT v0.1.2
 ################################################################################
 
 
@@ -19,12 +19,15 @@ declare -r MN_RPCPASS=`cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head
 declare -r DATE_STAMP="$(date +%y-%m-%d-%s)"
 declare -r SCRIPTPATH=$( cd $(dirname ${BASH_SOURCE[0]}) > /dev/null; pwd -P )
 declare -r MASTERPATH="$(dirname "${SCRIPTPATH}")"
-declare -r SCRIPT_VERSION="v0.1.1"
+declare -r SCRIPT_VERSION="v0.1.2"
 declare -r SCRIPT_LOGFILE="/tmp/linc_mn_setup_${DATE_STAMP}.log"
 
 declare -r GIT_URL=https://github.com/LINCPlatform/LINC.git
-declare -r RELEASE_VERSION="master"
+declare -r RELEASE_VERSION_SRC="master"
 declare -r CODE_DIR="LINC"
+
+declare -r RELEASE_VERSION="1.0.1"
+declare -r RELEASE_BUILD=1
 
 EXTERNAL_IP=${AUTODETECT_EXTERNAL_IP}
 
@@ -156,17 +159,17 @@ function install_node() {
 
     if [ ! -f ${MN_DAEMON} ]; then
         cd ${SCRIPTPATH} &>> ${SCRIPT_LOGFILE}
-        wget https://linc.site/releases/LINC-1.0.0-linux64.tar.gz -O LINC-1.0.0-linux64.tar.gz &>> ${SCRIPT_LOGFILE}
-        if [ ! -f LINC-1.0.0-linux64.tar.gz ]; then
+        wget "https://github.com/LINCPlatform/LINC/releases/download/${RELEASE_VERSION}.${RELEASE_BUILD}/LINC-${RELEASE_VERSION}-linux64.tar.gz" -O LINC-${RELEASE_VERSION}-linux64.tar.gz &>> ${SCRIPT_LOGFILE}
+        if [ ! -f LINC-${RELEASE_VERSION}-linux64.tar.gz ]; then
             output "Unable to download latest release. Trying to compile from source code..."
             compile
         else
-            tar -xvf LINC-1.0.0-linux64.tar.gz &>> ${SCRIPT_LOGFILE}
-            if [ ! -f ${SCRIPTPATH}/linc-1.0.0/bin/lincd ]; then
+            tar -xvf LINC-${RELEASE_VERSION}-linux64.tar.gz &>> ${SCRIPT_LOGFILE}
+            if [ ! -f ${SCRIPTPATH}/linc-${RELEASE_VERSION}/bin/lincd ]; then
                 output "Corrupted archive. Trying to compile from source code..."
                 compile
             else    
-                cd linc-1.0.0/bin &>> ${SCRIPT_LOGFILE}
+                cd linc-${RELEASE_VERSION}/bin &>> ${SCRIPT_LOGFILE}
                 ./lincd -version &>> ${SCRIPT_LOGFILE}
                 if [ $? -ne 0 ]; then
                     output "Compiled binaries launch failed. Trying to compile from source code..."
@@ -199,8 +202,8 @@ function compile() {
             cd ${SCRIPTPATH}/${CODE_DIR}                        &>> ${SCRIPT_LOGFILE}
             git clone ${GIT_URL} .                              &>> ${SCRIPT_LOGFILE}
             cd ${SCRIPTPATH}/${CODE_DIR}                        &>> ${SCRIPT_LOGFILE}
-            output "Checking out release version: ${RELEASE_VERSION}"
-            git checkout ${RELEASE_VERSION}                     &>> ${SCRIPT_LOGFILE}
+            output "Checking out release version: ${RELEASE_VERSION_SRC}"
+            git checkout ${RELEASE_VERSION_SRC}                     &>> ${SCRIPT_LOGFILE}
 
             chmod u+x share/genbuild.sh &>> ${SCRIPT_LOGFILE}
             chmod u+x src/leveldb/build_detect_platform &>> ${SCRIPT_LOGFILE}
