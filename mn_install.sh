@@ -8,25 +8,27 @@ declare -r SSH_INBOUND_PORT=22
 declare -r AUTODETECT_EXTERNAL_IP=`ifconfig | sed -En 's/127.0.0.1//;s/.*inet (addr:)?(([0-9]*\.){3}[0-9]*).*/\2/p' | head -n 1`
 
 declare -r MN_SWAPSIZE=2000
-declare -r MN_USER="linc"
-declare -r MN_DAEMON=/usr/local/bin/lincd
-declare -r MN_INBOUND_PORT=17222
-declare -r MN_CONF_DIR=/home/${MN_USER}/.linc
-declare -r MN_CONF_FILE=${MN_CONF_DIR}/linc.conf
+declare -r MN_USER="send"
+declare -r MN_DAEMON=/usr/local/bin/sendd
+declare -r MN_INBOUND_PORT=50050            #mainnet
+#declare -r MN_INBOUND_PORT=51474           #testnet
+declare -r MN_CONF_DIR=/home/${MN_USER}/.send
+declare -r MN_CONF_FILE=${MN_CONF_DIR}/send.conf
 declare -r MN_RPCUSER=$(date +%s | sha256sum | base64 | head -c 10 ; echo)
 declare -r MN_RPCPASS=`cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1`
 
 declare -r DATE_STAMP="$(date +%y-%m-%d-%s)"
 declare -r SCRIPTPATH=$( cd $(dirname ${BASH_SOURCE[0]}) > /dev/null; pwd -P )
 declare -r MASTERPATH="$(dirname "${SCRIPTPATH}")"
-declare -r SCRIPT_VERSION="v0.1.2"
-declare -r SCRIPT_LOGFILE="/tmp/linc_mn_setup_${DATE_STAMP}.log"
+declare -r SCRIPT_VERSION="v1.2.0"
+declare -r SCRIPT_LOGFILE="/tmp/send_mn_setup_${DATE_STAMP}.log"
 
-declare -r GIT_URL=https://github.com/LINCPlatform/LINC.git
-declare -r RELEASE_VERSION_SRC="master"
-declare -r CODE_DIR="LINC"
+declare -r GIT_URL=https://github.com/SocialSend/SocialSend.git
+declare -r RELEASE_VERSION_SRC="master"     #mainnet
+#declare -r RELEASE_VERSION_SRC="Dev"       #testnet
+declare -r CODE_DIR="SocialSend"
 
-declare -r RELEASE_VERSION="1.0.1"
+declare -r RELEASE_VERSION="1.2.0"
 declare -r RELEASE_BUILD=1
 
 EXTERNAL_IP=${AUTODETECT_EXTERNAL_IP}
@@ -75,7 +77,7 @@ function get_input() {
     output ""
     output ""
 
-    output "[ LINC MASTERNODE INSTALLATION SCRIPT ${SCRIPT_VERSION} ]"
+    output "[ SocialSend MASTERNODE INSTALLATION SCRIPT ${SCRIPT_VERSION} ]"
 
     output ""
     output ""
@@ -106,12 +108,8 @@ function update_system() {
 function install_packages() {
     output ""
     output "Installing required packages..."
-
-    sudo apt-get -y install wget unzip &>> ${SCRIPT_LOGFILE}
-    sudo apt-get -y install software-properties-common build-essential protobuf-compiler libprotobuf-dev \
-    libtool autotools-dev automake autoconf-archive pkg-config libssl-dev libcurl4-openssl-dev \
-    libevent-dev bsdmainutils libboost-all-dev libminiupnpc-dev libzmq3-dev \
-    libgmp3-dev git make apt-utils g++ libcurl3-dev libudev-dev &>> ${SCRIPT_LOGFILE}
+    sudo apt-get -y install wget unzip pkg-config &>> ${SCRIPT_LOGFILE}
+    sudo apt-get -y install build-essential autoconf automake libtool libboost-all-dev libgmp-dev libssl-dev libcurl4-openssl-dev git qtbase5-dev libzmq3-dev &>> ${SCRIPT_LOGFILE}
     sudo add-apt-repository -y ppa:bitcoin/bitcoin  &>> ${SCRIPT_LOGFILE}
     sudo apt-get -y update  &>> ${SCRIPT_LOGFILE}
     sudo apt-get -y install libdb4.8-dev libdb4.8++-dev  &>> ${SCRIPT_LOGFILE}
@@ -152,25 +150,31 @@ function configure_firewall() {
     sudo ufw --force enable                        &>> ${SCRIPT_LOGFILE}
 }
 
+function add_firewal_rule() {
+    output ""
+    output "Adding new firewall rule"
+    sudo ufw allow ${MN_INBOUND_PORT}/tcp       &>> ${SCRIPT_LOGFILE}
+}
+
 # install
 function install_node() {
-    sudo killall lincd &>> ${SCRIPT_LOGFILE}
+    sudo killall sendd &>> ${SCRIPT_LOGFILE}
     sudo rm -rf ${MN_CONF_DIR}/* &>> ${SCRIPT_LOGFILE}
 
     if [ ! -f ${MN_DAEMON} ]; then
         cd ${SCRIPTPATH} &>> ${SCRIPT_LOGFILE}
-        wget "https://github.com/LINCPlatform/LINC/releases/download/${RELEASE_VERSION}.${RELEASE_BUILD}/LINC-${RELEASE_VERSION}-linux64.tar.gz" -O LINC-${RELEASE_VERSION}-linux64.tar.gz &>> ${SCRIPT_LOGFILE}
-        if [ ! -f LINC-${RELEASE_VERSION}-linux64.tar.gz ]; then
+        wget "https://github.com/SocialSend/SocialSend/releases/download/${RELEASE_VERSION}.${RELEASE_BUILD}/SEND-${RELEASE_VERSION}-linux.tar.gz" -O SEND-${RELEASE_VERSION}-linux64.tar.gz &>> ${SCRIPT_LOGFILE}
+        if [ ! -f SEND-${RELEASE_VERSION}-linux64.tar.gz ]; then
             output "Unable to download latest release. Trying to compile from source code..."
             compile
         else
-            tar -xvf LINC-${RELEASE_VERSION}-linux64.tar.gz &>> ${SCRIPT_LOGFILE}
-            if [ ! -f ${SCRIPTPATH}/linc-${RELEASE_VERSION}/bin/lincd ]; then
+            tar -xvf SEND-${RELEASE_VERSION}-linux.tar.gz &>> ${SCRIPT_LOGFILE}
+            if [ ! -f ${SCRIPTPATH}/send-${RELEASE_VERSION}/bin/sendd ]; then
                 output "Corrupted archive. Trying to compile from source code..."
                 compile
             else    
-                cd linc-${RELEASE_VERSION}/bin &>> ${SCRIPT_LOGFILE}
-                ./lincd -version &>> ${SCRIPT_LOGFILE}
+                cd send-${RELEASE_VERSION}/bin &>> ${SCRIPT_LOGFILE}
+                ./sendd -version &>> ${SCRIPT_LOGFILE}
                 if [ $? -ne 0 ]; then
                     output "Compiled binaries launch failed. Trying to compile from source code..."
                     compile
@@ -200,10 +204,10 @@ function compile() {
                 mkdir -p ${SCRIPTPATH}/${CODE_DIR}              &>> ${SCRIPT_LOGFILE}
             fi
             cd ${SCRIPTPATH}/${CODE_DIR}                        &>> ${SCRIPT_LOGFILE}
-            git clone ${GIT_URL} .                              &>> ${SCRIPT_LOGFILE}
+            git clone ${GIT_URL} -b ${RELEASE_VERSION_SRC} .    &>> ${SCRIPT_LOGFILE}
             cd ${SCRIPTPATH}/${CODE_DIR}                        &>> ${SCRIPT_LOGFILE}
-            output "Checking out release version: ${RELEASE_VERSION_SRC}"
-            git checkout ${RELEASE_VERSION_SRC}                     &>> ${SCRIPT_LOGFILE}
+            output "Checking out release version: c"
+            git checkout ${RELEASE_VERSION_SRC}                 &>> ${SCRIPT_LOGFILE}
 
             chmod u+x share/genbuild.sh &>> ${SCRIPT_LOGFILE}
             chmod u+x src/leveldb/build_detect_platform &>> ${SCRIPT_LOGFILE}
@@ -217,11 +221,11 @@ function compile() {
             ./configure --disable-dependency-tracking --disable-tests --disable-bench --with-gui=no --disable-gui-tests --with-miniupnpc=no &>> ${SCRIPT_LOGFILE}
             if [ $? -ne 0 ]; then displayError "Configuring failed!"; fi
 
-            output "Building LINC... this may take a few minutes..."
-            make &>> ${SCRIPT_LOGFILE}
+            output "Building SEND... this may take a few minutes..."
+            sudo make &>> ${SCRIPT_LOGFILE}
             if [ $? -ne 0 ]; then displayError "Build failed!"; fi
 
-            output "Installing LINC..."
+            output "Installing SEND..."
             sudo make install &>> ${SCRIPT_LOGFILE}
             if [ $? -ne 0 ]; then displayError "Installation failed!"; fi
     else
@@ -255,13 +259,11 @@ function create_config() {
     if [ ! -d "$MN_CONF_DIR" ]; then sudo mkdir $MN_CONF_DIR; fi
     if [ $? -ne 0 ]; then displayError "Unable to create config directory!"; fi
     
-    NODES_LIST=`wget "https://explorer.linc.site/nodes/?format=conf" -q -O -`
-    if [[ ! "${NODES_LIST}" =~ ^addnode=[\d\.]+* ]]; then NODES_LIST=''; fi
-
-        sudo bash -c "cat > ${MN_CONF_FILE} <<-EOF
+    sudo bash -c "cat > ${MN_CONF_FILE} <<-EOF
 listen=1
 server=1
 daemon=1
+testnet=1
 masternode=1
 masternodeprivkey=${MN_PKEY}
 bind=${EXTERNAL_IP}
@@ -272,13 +274,6 @@ rpcallowip=127.0.0.1
 rpcuser=${MN_RPCUSER}
 rpcpassword=${MN_RPCPASS}
 maxconnections=256
-addnode=45.77.182.60
-addnode=45.76.223.149
-addnode=45.77.132.180
-addnode=173.199.118.148
-addnode=8.9.4.195
-addnode=104.156.225.78
-${NODES_LIST}
 EOF"
 
     sudo chown -R ${MN_USER}:${MN_USER} ${MN_CONF_DIR} &>> ${SCRIPT_LOGFILE}
@@ -289,7 +284,7 @@ function unpack_bootstrap() {
     output "Unpacking bootstrap"
 
     cd $MN_CONF_DIR &>> ${SCRIPT_LOGFILE}
-    wget https://linc.site/res/blockchain.tar.gz &>> ${SCRIPT_LOGFILE}
+    wget https://socialsend.io/res/blockchain.tar.gz &>> ${SCRIPT_LOGFILE}
     tar -xvf blockchain.tar.gz &>> ${SCRIPT_LOGFILE}
     sudo chown -R ${MN_USER}:${MN_USER} ${MN_CONF_DIR} &>> ${SCRIPT_LOGFILE}
     rm -rf blockchain.tar.gz &>> ${SCRIPT_LOGFILE}
@@ -300,14 +295,14 @@ function launch_daemon() {
     output ""
     output "Launching daemon..."
 
-    sudo -u ${MN_USER} -H lincd &>> ${SCRIPT_LOGFILE}
+    sudo -u ${MN_USER} -H sendd &>> ${SCRIPT_LOGFILE}
 }
 
 
 function finish() {
     output ""
-    output "Success! Your LINC masternode has started. Now update your Masternode.conf in your local wallet:"
-    output "<MN-ALIAS> $EXTERNAL_IP:17222 $MN_PKEY <TX_ID> <TX_OUTPUT_INDEX>"
+    output "Success! Your SocialSend masternode has started. Now update your Masternode.conf in your local wallet:"
+    output "<MN-ALIAS> $EXTERNAL_IP:$MN_INBOUND_PORT $MN_PKEY <TX_ID> <TX_OUTPUT_INDEX>"
     exit 0
 }
 
@@ -320,10 +315,11 @@ get_input
 update_system
 install_packages
 swaphack
-configure_firewall
+#configure_firewall
+add_firewal_rule
 install_node
 create_mn_user
 create_config
-unpack_bootstrap
+#unpack_bootstrap
 launch_daemon
 finish
