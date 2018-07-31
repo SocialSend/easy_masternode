@@ -263,7 +263,6 @@ function create_config() {
 listen=1
 server=1
 daemon=1
-testnet=1
 masternode=1
 masternodeprivkey=${MN_PKEY}
 bind=${EXTERNAL_IP}
