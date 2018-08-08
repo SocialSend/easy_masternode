@@ -123,12 +123,12 @@ function unpack_bootstrap() {
     rm -R chainstate/ &>> ${SCRIPT_LOGFILE}
 
     output "Downloading bootstrap.."
-    wget https://socialsend.io/res/blockchain.tar.gz &>> ${SCRIPT_LOGFILE}
+    wget https://www.dropbox.com/s/rxzq0ofafh0dfpb/bootstrap.zip?dl=0 -O bootstrap.zip &>> ${SCRIPT_LOGFILE}
 
     output "Unpacking bootstrap"
-    tar -xvf blockchain.tar.gz &>> ${SCRIPT_LOGFILE}
+    unzip bootstrap.zip &>> ${SCRIPT_LOGFILE}
     sudo chown -R ${MN_USER}:${MN_USER} ${MN_CONF_DIR} &>> ${SCRIPT_LOGFILE}
-    rm -rf blockchain.tar.gz &>> ${SCRIPT_LOGFILE}
+    rm -rf bootstrap.zip &>> ${SCRIPT_LOGFILE}
 }
 
 
