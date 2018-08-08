@@ -2,6 +2,8 @@
 
 ## Installation
 
+These scripts will work if SocialSend is running from "send" user. The script must be executed from "root" user or from some user in sudoers's list.
+
 SSH to your VPS and clone the Github repository:
 
 ```bash
@@ -25,3 +27,4 @@ Reload and unpack new bootstrap for your Masternode:
 ```bash
 ./mn_update_blocks.sh
 ```
+
