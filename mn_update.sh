@@ -131,6 +131,44 @@ function unpack_bootstrap() {
     rm -rf bootstrap.zip &>> ${SCRIPT_LOGFILE}
 }
 
+# creates mn user
+function create_mn_user() {
+    output ""
+    if id "${MN_USER}" >/dev/null 2>&1; then
+        output "MN user exists already, do nothing"
+    else
+        output "Adding new MN user ${MN_USER}"
+        sudo adduser --disabled-password --gecos "" ${MN_USER} &>> ${SCRIPT_LOGFILE}
+    fi
+}
+
+function create_config() {
+    output ""
+    output "Creating masternode config"
+
+    if [ ! -d "$MN_CONF_DIR" ]; then sudo mkdir $MN_CONF_DIR; fi
+    if [ $? -ne 0 ]; then displayError "Unable to create config directory!"; fi
+    
+    if [ ! -f ${MN_CONF_FILE} ]; then
+        output "Creating MN config file.."
+        sudo bash -c "cat > ${MN_CONF_FILE} <<-EOF
+        listen=1
+        server=1
+        daemon=1
+        masternode=1
+        rpcbind=127.0.0.1
+        rpcconnect=127.0.0.1
+        rpcallowip=127.0.0.1
+        rpcuser=${MN_RPCUSER}
+        rpcpassword=${MN_RPCPASS}
+        maxconnections=256
+        EOF"
+
+        sudo chown -R ${MN_USER}:${MN_USER} ${MN_CONF_DIR} &>> ${SCRIPT_LOGFILE}
+    else
+        output "MN config file exist.."
+    fi
+}
 
 function launch_daemon() {
     output ""
@@ -152,6 +190,8 @@ clear
 
 #add_firewal_rule
 compile
-#unpack_bootstrap
+unpack_bootstrap
+create_mn_user
+create_config
 launch_daemon
 finish
