@@ -12,3 +12,13 @@ Install your Masternode:
 
 ```bash
 ./mn_install.sh
+
+Update your Masternode Binaries:
+
+```bash
+./mn_update.sh
+
+Reload and unpack new bootstrap for your Masternode:
+
+```bash
+./mn_update_blocks.sh
