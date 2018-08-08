@@ -283,10 +283,10 @@ function unpack_bootstrap() {
     output "Unpacking bootstrap"
 
     cd $MN_CONF_DIR &>> ${SCRIPT_LOGFILE}
-    wget https://socialsend.io/res/blockchain.tar.gz &>> ${SCRIPT_LOGFILE}
-    tar -xvf blockchain.tar.gz &>> ${SCRIPT_LOGFILE}
+    wget https://www.dropbox.com/s/rxzq0ofafh0dfpb/bootstrap.zip?dl=0 -O bootstrap.zip  &>> ${SCRIPT_LOGFILE}
+    unzip bootstrap.zip &>> ${SCRIPT_LOGFILE}
     sudo chown -R ${MN_USER}:${MN_USER} ${MN_CONF_DIR} &>> ${SCRIPT_LOGFILE}
-    rm -rf blockchain.tar.gz &>> ${SCRIPT_LOGFILE}
+    rm -rf bootstrap.zip &>> ${SCRIPT_LOGFILE}
 }
 
 
@@ -319,6 +319,6 @@ add_firewal_rule
 install_node
 create_mn_user
 create_config
-#unpack_bootstrap
+unpack_bootstrap
 launch_daemon
 finish
