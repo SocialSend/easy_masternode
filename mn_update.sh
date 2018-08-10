@@ -134,18 +134,21 @@ function compile() {
 
 
 function unpack_bootstrap() {
-    output ""
-    cd $MN_CONF_DIR &>> ${SCRIPT_LOGFILE}
-    rm -R blocks/ &>> ${SCRIPT_LOGFILE}
-    rm -R chainstate/ &>> ${SCRIPT_LOGFILE}
+    if get_confirmation "Do you want to install bootstrap? [ YES/NO y/n ]"; then
+        output ""
+        cd $MN_CONF_DIR &>> ${SCRIPT_LOGFILE}
+        rm -R blocks/ &>> ${SCRIPT_LOGFILE}
+        rm -R chainstate/ &>> ${SCRIPT_LOGFILE}
+        rm peers.dat &>> ${SCRIPT_LOGFILE}
+        
+        output "Downloading bootstrap.."
+        wget https://www.dropbox.com/s/rxzq0ofafh0dfpb/bootstrap.zip?dl=0 -O bootstrap.zip &>> ${SCRIPT_LOGFILE}
 
-    output "Downloading bootstrap.."
-    wget https://www.dropbox.com/s/rxzq0ofafh0dfpb/bootstrap.zip?dl=0 -O bootstrap.zip &>> ${SCRIPT_LOGFILE}
-
-    output "Unpacking bootstrap"
-    unzip bootstrap.zip &>> ${SCRIPT_LOGFILE}
-    sudo chown -R ${MN_USER}:${MN_USER} ${MN_CONF_DIR} &>> ${SCRIPT_LOGFILE}
-    rm -rf bootstrap.zip &>> ${SCRIPT_LOGFILE}
+        output "Unpacking bootstrap"
+        unzip bootstrap.zip &>> ${SCRIPT_LOGFILE}
+        sudo chown -R ${MN_USER}:${MN_USER} ${MN_CONF_DIR} &>> ${SCRIPT_LOGFILE}
+        rm -rf bootstrap.zip &>> ${SCRIPT_LOGFILE}
+    fi
 }
 
 # creates mn user
