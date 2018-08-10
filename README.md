@@ -13,13 +13,13 @@ git clone https://github.com/SocialSend/easy_masternode.git && cd easy_masternod
 ### Install your Masternode:
 
 ```bash
-./mn_install.sh
+sudo ./mn_install.sh
 ```
 
 ### Update your Masternode Binaries:
 SocialSend should run from "send" user, if not, this script will create a new user "send" but you have to copy configuration file manually.
 ```bash
-./mn_update.sh
+sudo ./mn_update.sh
 ```
 
 ### Reload and unpack new bootstrap for your Masternode:
