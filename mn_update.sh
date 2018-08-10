@@ -8,12 +8,12 @@ declare -r SSH_INBOUND_PORT=22
 declare -r AUTODETECT_EXTERNAL_IP=`ifconfig | sed -En 's/127.0.0.1//;s/.*inet (addr:)?(([0-9]*\.){3}[0-9]*).*/\2/p' | head -n 1`
 
 declare -r MN_SWAPSIZE=2000
-declare -r MN_USER="send"
+declare    MN_USER="send"
 declare -r MN_DAEMON=/usr/local/bin/sendd
 declare -r MN_INBOUND_PORT=50050            #mainnet
 #declare -r MN_INBOUND_PORT=51474           #testnet
-declare -r MN_CONF_DIR=/home/${MN_USER}/.send
-declare -r MN_CONF_FILE=${MN_CONF_DIR}/send.conf
+declare    MN_CONF_DIR=/home/${MN_USER}/.send
+declare    MN_CONF_FILE=${MN_CONF_DIR}/send.conf
 declare -r MN_RPCUSER=$(date +%s | sha256sum | base64 | head -c 10 ; echo)
 declare -r MN_RPCPASS=`cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1`
 
@@ -59,6 +59,23 @@ function get_confirmation() {
     esac
 }
 
+function get_user() {
+    read -r -p "Is your masternode running as 'send' user? [y/n] " response
+    case "$response" in
+        [yY][eE][sS]|[yY])
+            true
+            ;;
+        *)
+            read -e -p "Enter the user: " MN_USER
+            MN_CONF_DIR=/home/${MN_USER}/.send
+            MN_CONF_FILE=${MN_CONF_DIR}/send.conf
+            false
+            ;;
+    esac
+
+    output "User: ${MN_USER}"
+    output "Config File: ${MN_CONF_FILE}"
+}
 
 function add_firewal_rule() {
     output ""
@@ -187,7 +204,7 @@ function finish() {
 
 
 clear
-
+get_user
 #add_firewal_rule
 compile
 unpack_bootstrap
