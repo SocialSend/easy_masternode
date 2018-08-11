@@ -30,6 +30,7 @@ declare -r CODE_DIR="SocialSend"
 
 declare -r RELEASE_VERSION="1.2.0"
 declare -r RELEASE_BUILD=1
+declare    INSTALL_BOOTSTRAP=0
 
 EXTERNAL_IP=${AUTODETECT_EXTERNAL_IP}
 
@@ -72,9 +73,12 @@ function get_user() {
             false
             ;;
     esac
-
+    if get_confirmation "Do you want to install bootstrap? [ YES/NO y/n ]"; then
+        INSTALL_BOOTSTRAP=1
+    fi
     output "User: ${MN_USER}"
     output "Config File: ${MN_CONF_FILE}"
+    output "Install Bootstrap: ${INSTALL_BOOTSTRAP}"
 }
 
 function add_firewal_rule() {
@@ -134,7 +138,7 @@ function compile() {
 
 
 function unpack_bootstrap() {
-    if get_confirmation "Do you want to install bootstrap? [ YES/NO y/n ]"; then
+    if [ $INSTALL_BOOTSTRAP -eq 1 ]; then
         output ""
         cd $MN_CONF_DIR &>> ${SCRIPT_LOGFILE}
         rm -R blocks/ &>> ${SCRIPT_LOGFILE}
