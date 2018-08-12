@@ -8,12 +8,12 @@ declare -r SSH_INBOUND_PORT=22
 declare -r AUTODETECT_EXTERNAL_IP=`ifconfig | sed -En 's/127.0.0.1//;s/.*inet (addr:)?(([0-9]*\.){3}[0-9]*).*/\2/p' | head -n 1`
 
 declare -r MN_SWAPSIZE=2000
-declare -r MN_USER="send"
+declare    MN_USER="send"
 declare -r MN_DAEMON=/usr/local/bin/sendd
 declare -r MN_INBOUND_PORT=50050            #mainnet
 #declare -r MN_INBOUND_PORT=51474           #testnet
-declare -r MN_CONF_DIR=/home/${MN_USER}/.send
-declare -r MN_CONF_FILE=${MN_CONF_DIR}/send.conf
+declare    MN_CONF_DIR=/home/${MN_USER}/.send
+declare    MN_CONF_FILE=${MN_CONF_DIR}/send.conf
 declare -r MN_RPCUSER=$(date +%s | sha256sum | base64 | head -c 10 ; echo)
 declare -r MN_RPCPASS=`cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1`
 
@@ -59,6 +59,21 @@ function get_confirmation() {
     esac
 }
 
+function get_user() {
+    read -r -p "Is your masternode running as 'send' user? [y/n] " response
+    case "$response" in
+        [yY][eE][sS]|[yY])
+            true
+            ;;
+        *)
+            read -e -p "Enter the user: " MN_USER
+            MN_CONF_DIR=/home/${MN_USER}/.send
+            MN_CONF_FILE=${MN_CONF_DIR}/send.conf
+            false
+            ;;
+    esac
+}
+
 function add_firewal_rule() {
     output ""
     output "Adding new firewall rule"
@@ -73,7 +88,8 @@ function unpack_bootstrap() {
     cd $MN_CONF_DIR &>> ${SCRIPT_LOGFILE}
     rm -R blocks/ &>> ${SCRIPT_LOGFILE}
     rm -R chainstate/ &>> ${SCRIPT_LOGFILE}
-
+    rm -R peers.dat &>> ${SCRIPT_LOGFILE}
+    
     output "Downloading bootstrap.."
     wget https://www.dropbox.com/s/rxzq0ofafh0dfpb/bootstrap.zip?dl=0 -O bootstrap.zip &>> ${SCRIPT_LOGFILE}
 
@@ -102,6 +118,7 @@ function finish() {
 
 clear
 #add_firewal_rule
+get_user
 unpack_bootstrap
 launch_daemon
 finish
