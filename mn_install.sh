@@ -28,8 +28,8 @@ declare -r RELEASE_VERSION_SRC="master"     #mainnet
 #declare -r RELEASE_VERSION_SRC="Dev"       #testnet
 declare -r CODE_DIR="SocialSend"
 
-declare -r RELEASE_VERSION="1.2.0"
-declare -r RELEASE_BUILD=1
+declare -r RELEASE_VERSION="1.2.0.3"
+declare -r RELEASE_BUILD=3
 
 EXTERNAL_IP=${AUTODETECT_EXTERNAL_IP}
 
@@ -163,23 +163,25 @@ function install_node() {
 
     if [ ! -f ${MN_DAEMON} ]; then
         cd ${SCRIPTPATH} &>> ${SCRIPT_LOGFILE}
-        wget "https://github.com/SocialSend/SocialSend/releases/download/${RELEASE_VERSION}.${RELEASE_BUILD}/SEND-${RELEASE_VERSION}-linux.tar.gz" -O SEND-${RELEASE_VERSION}-linux64.tar.gz &>> ${SCRIPT_LOGFILE}
-        if [ ! -f SEND-${RELEASE_VERSION}-linux64.tar.gz ]; then
+        rm SEND-${RELEASE_VERSION}-linux64.zip  &>> ${SCRIPT_LOGFILE}
+        wget "https://github.com/SocialSend/SocialSend/releases/download/v1.2.0.3/SEND-LINUX64-CLI-v1.2.0.3.zip" -O SEND-${RELEASE_VERSION}-linux64.zip &>> ${SCRIPT_LOGFILE}
+        if [ ! -f SEND-${RELEASE_VERSION}-linux64.zip ]; then
             output "Unable to download latest release. Trying to compile from source code..."
             compile
         else
-            tar -xvf SEND-${RELEASE_VERSION}-linux.tar.gz &>> ${SCRIPT_LOGFILE}
-            if [ ! -f ${SCRIPTPATH}/send-${RELEASE_VERSION}/bin/sendd ]; then
+            unzip SEND-${RELEASE_VERSION}-linux64.zip &>> ${SCRIPT_LOGFILE}
+            chmod +x sendd send-cli &>> ${SCRIPT_LOGFILE}
+            if [ ! -f ${SCRIPTPATH}/sendd ]; then
                 output "Corrupted archive. Trying to compile from source code..."
                 compile
             else    
-                cd send-${RELEASE_VERSION}/bin &>> ${SCRIPT_LOGFILE}
                 ./sendd -version &>> ${SCRIPT_LOGFILE}
-                if [ $? -ne 0 ]; then
+                if [ $? -ne 1 ]; then
                     output "Compiled binaries launch failed. Trying to compile from source code..."
                     compile
                 else
-                    sudo cp * /usr/local/bin/ &>> ${SCRIPT_LOGFILE}
+                    sudo mv sendd /usr/local/bin/ &>> ${SCRIPT_LOGFILE}
+                    sudo mv send-cli /usr/local/bin/ &>> ${SCRIPT_LOGFILE}
                     # if it's not available after onstallation, theres something wrong
                     if [ ! -f ${MN_DAEMON} ]; then
                         output "Installation failed! Trying to complile from source code..."

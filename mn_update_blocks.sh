@@ -68,6 +68,11 @@ function get_user() {
         *)
             read -e -p "Enter the user: " MN_USER
             MN_CONF_DIR=/home/${MN_USER}/.send
+
+            if [ ${MN_USER} = "root" ]; then
+                MN_CONF_DIR=/root/.send
+            fi
+
             MN_CONF_FILE=${MN_CONF_DIR}/send.conf
             false
             ;;

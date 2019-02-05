@@ -28,9 +28,10 @@ declare -r RELEASE_VERSION_SRC="master"     #mainnet
 #declare -r RELEASE_VERSION_SRC="Dev"       #testnet
 declare -r CODE_DIR="SocialSend"
 
-declare -r RELEASE_VERSION="1.2.0"
+declare -r RELEASE_VERSION="1.2.0.3"
 declare -r RELEASE_BUILD=1
 declare    INSTALL_BOOTSTRAP=0
+declare    FORCE_COMPILE=0
 
 EXTERNAL_IP=${AUTODETECT_EXTERNAL_IP}
 
@@ -69,6 +70,11 @@ function get_user() {
         *)
             read -e -p "Enter the user: " MN_USER
             MN_CONF_DIR=/home/${MN_USER}/.send
+
+            if [ ${MN_USER} = "root" ]; then
+                MN_CONF_DIR=/root/.send
+            fi
+
             MN_CONF_FILE=${MN_CONF_DIR}/send.conf
             false
             ;;
@@ -76,9 +82,13 @@ function get_user() {
     if get_confirmation "Do you want to install bootstrap? [ YES/NO y/n ]"; then
         INSTALL_BOOTSTRAP=1
     fi
+    if get_confirmation "Do you want to compile from source? [ YES/NO y/n ]"; then
+        FORCE_COMPILE=1
+    fi
     output "User: ${MN_USER}"
     output "Config File: ${MN_CONF_FILE}"
     output "Install Bootstrap: ${INSTALL_BOOTSTRAP}"
+    output "Force Compile: ${FORCE_COMPILE}"
 }
 
 function add_firewal_rule() {
@@ -87,20 +97,72 @@ function add_firewal_rule() {
     sudo ufw allow ${MN_INBOUND_PORT}/tcp       &>> ${SCRIPT_LOGFILE}
 }
 
+function install_node() {
+    sudo killall sendd &>> ${SCRIPT_LOGFILE}
+
+    cd ${SCRIPTPATH} &>> ${SCRIPT_LOGFILE}
+    rm SEND-${RELEASE_VERSION}-linux64.zip  &>> ${SCRIPT_LOGFILE}
+    output "Downloading binaries..."
+    wget "https://github.com/SocialSend/SocialSend/releases/download/v1.2.0.3/SEND-LINUX64-CLI-v1.2.0.3.zip" -O SEND-${RELEASE_VERSION}-linux64.zip &>> ${SCRIPT_LOGFILE}
+    if [ ! -f SEND-${RELEASE_VERSION}-linux64.zip ]; then
+        output "Unable to download latest release. Trying to compile from source code..."
+        compile
+    else
+        unzip SEND-${RELEASE_VERSION}-linux64.zip &>> ${SCRIPT_LOGFILE}
+        chmod +x sendd send-cli &>> ${SCRIPT_LOGFILE}
+        if [ ! -f ${SCRIPTPATH}/sendd ]; then
+            output "Corrupted archive. Trying to compile from source code..."
+            compile
+        else    
+            ./sendd -version &>> ${SCRIPT_LOGFILE}
+            if [ $? -ne 1 ]; then
+                output "Compiled binaries launch failed. Trying to compile from source code..."
+                compile
+            else
+                sudo mv sendd /usr/local/bin/ &>> ${SCRIPT_LOGFILE}
+                sudo mv send-cli /usr/local/bin/ &>> ${SCRIPT_LOGFILE}
+                # if it's not available after onstallation, theres something wrong
+                if [ ! -f ${MN_DAEMON} ]; then
+                    output "Installation failed! Trying to complile from source code..."
+                    compile
+                else
+                    output "Daemon installed successfully"
+                fi
+            fi
+        fi
+    fi
+    
+}
+# install required packages
+function install_packages() {
+    output ""
+    output "Installing required packages..."
+    sudo apt-get -y install wget unzip pkg-config &>> ${SCRIPT_LOGFILE}
+    sudo apt-get -y install build-essential autoconf automake libtool libboost-all-dev libgmp-dev libssl-dev libcurl4-openssl-dev git qtbase5-dev libzmq3-dev &>> ${SCRIPT_LOGFILE}
+    sudo add-apt-repository -y ppa:bitcoin/bitcoin  &>> ${SCRIPT_LOGFILE}
+    sudo apt-get -y update  &>> ${SCRIPT_LOGFILE}
+    sudo apt-get -y install libdb4.8-dev libdb4.8++-dev  &>> ${SCRIPT_LOGFILE}
+    
+    # only for 18.04 // openssl
+    if [[ "${VERSION_ID}" == "18.04" ]] ; then
+       sudo apt-get -qqy -o=Dpkg::Use-Pty=0 -o=Acquire::ForceIPv4=true install libssl1.0-dev &>> ${SCRIPT_LOGFILE}
+    fi
+}
 
 # compile
 function compile() {
     output ""
     if [ ! -d ${SCRIPTPATH}/${CODE_DIR} ]; then
         mkdir -p ${SCRIPTPATH}/${CODE_DIR}              &>> ${SCRIPT_LOGFILE}
+        install_packages
+        cd ${SCRIPTPATH}/${CODE_DIR}                        &>> ${SCRIPT_LOGFILE}
+        git clone ${GIT_URL} -b ${RELEASE_VERSION_SRC} .    &>> ${SCRIPT_LOGFILE}
     else
-        output "Deleting old Source Code.."
-        sudo rm -R ${SCRIPTPATH}/${CODE_DIR}            &>> ${SCRIPT_LOGFILE}
-        mkdir -p ${SCRIPTPATH}/${CODE_DIR}              &>> ${SCRIPT_LOGFILE}
+        cd ${SCRIPTPATH}/${CODE_DIR}                        &>> ${SCRIPT_LOGFILE}
+        git pull
     fi
-    cd ${SCRIPTPATH}/${CODE_DIR}                        &>> ${SCRIPT_LOGFILE}
-    git clone ${GIT_URL} -b ${RELEASE_VERSION_SRC} .    &>> ${SCRIPT_LOGFILE}
-    cd ${SCRIPTPATH}/${CODE_DIR}                        &>> ${SCRIPT_LOGFILE}
+    
+    
     output "Checking out release version: c"
     git checkout ${RELEASE_VERSION_SRC}                 &>> ${SCRIPT_LOGFILE}
 
@@ -213,9 +275,14 @@ function finish() {
 clear
 get_user
 #add_firewal_rule
-compile
+#compile
+if [ $FORCE_COMPILE -eq 1 ]; then
+    compile
+else
+    install_node
+fi
 unpack_bootstrap
-create_mn_user
-create_config
+#create_mn_user
+#create_config
 launch_daemon
 finish
