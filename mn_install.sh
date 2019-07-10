@@ -164,7 +164,7 @@ function install_node() {
     if [ ! -f ${MN_DAEMON} ]; then
         cd ${SCRIPTPATH} &>> ${SCRIPT_LOGFILE}
         rm SEND-${RELEASE_VERSION}-linux64.zip  &>> ${SCRIPT_LOGFILE}
-        wget "https://github.com/SocialSend/SocialSend/releases/download/v1.2.0.5/SEND-LINUX64-CLI-v1.2.0.5.zip" -O SEND-${RELEASE_VERSION}-linux64.zip &>> ${SCRIPT_LOGFILE}
+        wget "https://github.com/SocialSend/SocialSend/releases/download/1.2.0.5/LINUX64.zip" -O SEND-${RELEASE_VERSION}-linux64.zip &>> ${SCRIPT_LOGFILE}
         if [ ! -f SEND-${RELEASE_VERSION}-linux64.zip ]; then
             output "Unable to download latest release. Trying to compile from source code..."
             compile
