@@ -170,6 +170,7 @@ function install_node() {
             compile
         else
             unzip SEND-${RELEASE_VERSION}-linux64.zip &>> ${SCRIPT_LOGFILE}
+            cd LINUX64 &>> ${SCRIPT_LOGFILE}
             chmod +x sendd send-cli &>> ${SCRIPT_LOGFILE}
             if [ ! -f ${SCRIPTPATH}/sendd ]; then
                 output "Corrupted archive. Trying to compile from source code..."
